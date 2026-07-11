@@ -92,16 +92,18 @@ internal fun StopwatchState.elapsedMs(nowElapsedRealtimeMs: Long): Long = when (
 }
 
 internal fun formatElapsedTime(elapsedMs: Long): String {
-    val totalSeconds = elapsedMs.coerceAtLeast(0L) / 1_000L
+    val nonNegativeElapsedMs = elapsedMs.coerceAtLeast(0L)
+    val totalSeconds = nonNegativeElapsedMs / 1_000L
     val seconds = totalSeconds % 60L
+    val tenths = (nonNegativeElapsedMs / 100L) % 10L
     val totalMinutes = totalSeconds / 60L
     val minutes = totalMinutes % 60L
     val hours = totalMinutes / 60L
 
     return if (hours == 0L) {
-        "${totalMinutes.twoDigits()}:${seconds.twoDigits()}"
+        "${totalMinutes.twoDigits()}:${seconds.twoDigits()}.$tenths"
     } else {
-        "$hours:${minutes.twoDigits()}:${seconds.twoDigits()}"
+        "$hours:${minutes.twoDigits()}:${seconds.twoDigits()}.$tenths"
     }
 }
 

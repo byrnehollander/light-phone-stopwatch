@@ -42,8 +42,7 @@ typographic, and free of configuration.
 ### Included
 
 - Start from zero; pause; resume; reset (from paused) to zero
-- Elapsed time displayed at one-second resolution; milliseconds tracked
-  internally
+- Elapsed time displayed to tenths of a second; milliseconds tracked internally
 - Timing continues across display sleep, navigation away, activity recreation,
   and process death within the same boot
 - Best-effort recovery of a running session across a device reboot
@@ -52,9 +51,9 @@ typographic, and free of configuration.
 ### Not Included
 
 - Laps, splits, saved sessions, or multiple stopwatches
-- Sub-second display (see Time Display for rationale)
+- Hundredths or millisecond display
 - Sound, vibration, notifications, or alarms
-- Settings, labels, or custom precision
+- Settings, labels, or configurable precision
 - Tool-declared permissions, network behavior, or background jobs (`LightWork`
   must not be used; its 15-minute minimum interval and deferred scheduling make
   it wrong for timekeeping, and no background work is needed). Shared SDK
@@ -91,21 +90,22 @@ Three states, four actions:
 
 ## Time Display
 
-- Below one hour: `MM:SS`, zero-padded, e.g. `03:27`.
-- At or above one hour: `H:MM:SS`, e.g. `1:03:27`. Hours grow without
-  truncation (`27:12:05`, `100:00:00`); the longest plausible string must be
-  verified to fit at the chosen text size.
-- Displayed seconds are the floor of the internal millisecond-precise elapsed
-  time.
-- The display updates once per second, aligned to the elapsed-time second
-  boundary (sleep `1000 - (elapsedMs % 1000)` between updates), and immediately
+- Below one hour: `MM:SS.t`, zero-padded except for the single tenths digit,
+  e.g. `03:27.4`.
+- At or above one hour: `H:MM:SS.t`, e.g. `1:03:27.4`. Hours grow without
+  truncation (`27:12:05.6`, `100:00:00.0`); there is no arbitrary duration cap
+  or rollover.
+- The displayed tenth is the floor of the internal millisecond-precise elapsed
+  time, never a rounded value. For example, 1,199 ms displays as `00:01.1`.
+- The display updates ten times per second, aligned to elapsed-time tenth
+  boundaries (sleep `100 - (elapsedMs % 100)` between updates), and immediately
   on every state change and screen show.
-- Rationale for one-second resolution: the driving use case is timing everyday
-  activities, where sub-second digits are unreadable while moving and useless
-  without laps. Dropping them removes a 30-60 Hz recomposition loop (the
-  largest battery cost this tool could have), eliminates flickering digits
-  that fight the Light aesthetic, and matches the seconds-resolution LightOS
-  Timer. Tenths/hundredths can be revisited if laps ever ship.
+- Rationale for tenths: one changing fractional digit makes short stopwatch
+  measurements feel responsive and useful without the visual churn or implied
+  precision of hundredths. A 10 Hz visible-only ticker is substantially calmer
+  and cheaper than a 30-100 Hz loop, while the measurement remains independent
+  of ticker cadence. Precision is fixed rather than configurable so opening the
+  tool remains immediate and settings-free.
 - Render with a stable-width treatment so digits never shift layout:
   `LightText(monospace = true)` is the SDK-supported default. If the monospace
   family clashes aesthetically, derive one style from Light typography with
@@ -132,7 +132,7 @@ One screen, three fixed regions, no navigation:
 |           Stopwatch            |
 |                                |
 |                                |
-|             00:00              |
+|            00:00.0             |
 |                                |
 |                                |
 |             START              |
@@ -146,7 +146,7 @@ One screen, three fixed regions, no navigation:
 |           Stopwatch            |
 |                                |
 |                                |
-|             03:27              |
+|            03:27.4             |
 |                                |
 |                                |
 |             PAUSE              |
@@ -160,7 +160,7 @@ One screen, three fixed regions, no navigation:
 |           Stopwatch            |
 |                                |
 |                                |
-|             03:27              |
+|            03:27.4             |
 |                                |
 |                                |
 |  RESET                 RESUME  |
@@ -178,10 +178,11 @@ One screen, three fixed regions, no navigation:
   (rendered centered); Paused passes two items (`RESET`, `RESUME`) for the
   left/right slots. Labels are uppercase.
 - Elapsed time: use fixed-width monospace numerals with
-  `LightTextVariant.Title` for the common `MM:SS` form. Switch to
-  `LightTextVariant.Subtitle` once hours appear so `H:MM:SS` strings retain
-  safe horizontal margins. Both variants come from the Light typography system;
-  do not add custom font sizes, kerning, or letter spacing.
+  `LightTextVariant.Title` for the common `MM:SS.t` form. Once hours appear,
+  use `LightTextVariant.Subtitle` while the string is 12 characters or fewer,
+  then `LightTextVariant.Heading` for unusually large hour counts. These
+  variants come from the Light typography system; do not add custom font sizes,
+  kerning, or letter spacing.
 - Use grid units (`gridUnitsAsDp`) for all spacing; do not hardcode dp.
 - Keep the bars' built-in touch targets; give buttons content descriptions.
 
@@ -247,7 +248,7 @@ loses only that one action. Coroutine cancellation is never swallowed.
 
 Read the snapshot once before presenting interactive state, then:
 
-1. Missing, unparsable, or wrong-schema snapshot: Idle at `00:00`.
+1. Missing, unparsable, or wrong-schema snapshot: Idle at `00:00.0`.
 2. `paused`: Paused at `accumulatedMs`.
 3. `running`, same boot: Running with
    `elapsed = accumulatedMs + (nowER - anchorEr)`. This covers navigation
@@ -320,7 +321,8 @@ Small, deterministic, and test-first; roughly four files plus tests:
 - Pure formatter `formatElapsed(elapsedMs): String` for the Time Display rules.
 - `StopwatchScreen : LightScreen<Unit, StopwatchViewModel>` annotated
   `@InitialScreen`; the view model owns a `StateFlow<StopwatchState>`, the
-  restoration read, snapshot writes, and the one-second ticker coroutine.
+  restoration read, snapshot writes, and the ten-times-per-second ticker
+  coroutine.
 - The UI state begins as not ready and becomes interactive only after the
   restoration read completes.
 - Ticker lifecycle: run only while state is Running and the screen is visible.
@@ -337,13 +339,14 @@ switch `serverPackage` to `com.thelightphone.sdk.emulator`.
 
 - Zero timers, writes, or wake-ups while the screen is off or the tool is
   hidden; the running state is a pair of numbers, not a process.
-- One recomposition per second while visible and running; none while paused.
+- Up to ten recompositions per second while visible and running; none while
+  paused.
 - No wake locks and no keep-awake (infeasible via the SDK; see Scope).
 
 ## Acceptance Criteria
 
-1. A fresh install shows `00:00` and a centered `START`.
-2. `START` begins counting up at one-second cadence and the action becomes a
+1. A fresh install shows `00:00.0` and a centered `START`.
+2. `START` begins counting up at tenth-second cadence and the action becomes a
    centered `PAUSE` in the same position.
 3. `PAUSE` freezes the value and shows `RESET` (left) and `RESUME` (right).
 4. `RESUME` continues from the frozen value without losing banked time.
@@ -363,7 +366,7 @@ switch `serverPackage` to `com.thelightphone.sdk.emulator`.
     with a fake clock: the value derives from `elapsed(now)` only).
 11. Digit changes and state changes cause no layout shift; the one-hour
     transition re-centers symmetrically without moving the bars.
-12. Representative hour-bearing strings through at least `100:00:00` fit at
+12. Representative hour-bearing strings through at least `100:00:00.0` fit at
     the LP3 reference size (1080 x 1240) in both light and dark themes.
 13. The tool declares no `lighttool.toml` permissions, performs no network or
     background work, and adds no dependencies beyond the existing allow-list.
@@ -375,8 +378,8 @@ switch `serverPackage` to `com.thelightphone.sdk.emulator`.
 
 - Unit-test the reducer for every (state, action) pair, including ignored
   actions.
-- Unit-test the formatter at `0`, `59s -> 1:00`, `59:59 -> 1:00:00`,
-  `9:59:59 -> 10:00:00`, and a 100+ hour value.
+- Unit-test the formatter around tenth, minute, and hour boundaries, including
+  negative input, `Long.MAX_VALUE`, and a 100+ hour value.
 - Unit-test pause/resume accumulation and tick-independence with a fake
   `TimeSource`.
 - Unit-test restoration against fabricated snapshots: each state, missing
@@ -401,7 +404,8 @@ None block version 1.
   screen or status line?
 - Could the SDK expose a system boot token so reboot detection does not rely
   on clock heuristics?
-- If laps ever ship, revisit sub-second display and refresh cadence together.
+- If laps ever ship, revisit whether tenths remains the right precision rather
+  than assuming more digits are useful.
 
 ## Reference Behavior
 
@@ -410,8 +414,9 @@ None block version 1.
   https://support.apple.com/guide/iphone/use-the-stopwatch-iph96b1e460/ios
 - GNOME Clocks uses Start / Pause / Resume / Clear, with Clear available only
   while paused: https://help.gnome.org/gnome-clocks/stopwatch.html
-- LightOS Timer uses explicit text actions and seconds resolution,
-  reinforcing text-first, calm controls for this tool family:
+- LightOS Timer uses explicit text actions and seconds resolution, reinforcing
+  text-first, calm controls; the fixed tenths digit is a deliberate stopwatch
+  distinction rather than a change to that interaction model:
   https://support.thelightphone.com/hc/en-us/articles/24571548717716-Timer-Tool
 - `SystemClock` semantics (monotonic bases, sleep behavior):
   https://developer.android.com/reference/android/os/SystemClock

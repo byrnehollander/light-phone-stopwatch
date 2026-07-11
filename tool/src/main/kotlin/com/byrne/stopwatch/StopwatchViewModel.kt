@@ -18,11 +18,12 @@ import kotlinx.coroutines.sync.withLock
 import kotlin.coroutines.cancellation.CancellationException
 
 private const val TAG = "StopwatchViewModel"
+private const val DISPLAY_INTERVAL_MS = 100L
 
 internal data class StopwatchUiState(
     val isReady: Boolean = false,
     val stopwatchState: StopwatchState = StopwatchState.Idle,
-    val elapsedText: String = "00:00",
+    val elapsedText: String = "00:00.0",
 )
 
 class StopwatchViewModel internal constructor(
@@ -114,7 +115,7 @@ class StopwatchViewModel internal constructor(
                 refreshUi()
                 val current = state ?: break
                 val elapsedMs = current.elapsedMs(timeSource.read().elapsedRealtimeMs)
-                val delayMs = 1_000L - (elapsedMs % 1_000L)
+                val delayMs = DISPLAY_INTERVAL_MS - (elapsedMs % DISPLAY_INTERVAL_MS)
                 delay(delayMs)
             }
         }

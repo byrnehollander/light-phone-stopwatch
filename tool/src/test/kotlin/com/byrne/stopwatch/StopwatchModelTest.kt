@@ -131,17 +131,20 @@ class StopwatchModelTest {
     }
 
     @Test
-    fun formatsMinuteAndHourBoundaries() {
-        assertEquals("00:00", formatElapsedTime(0L))
-        assertEquals("00:59", formatElapsedTime(59_999L))
-        assertEquals("01:00", formatElapsedTime(60_000L))
-        assertEquals("59:59", formatElapsedTime(3_599_999L))
-        assertEquals("1:00:00", formatElapsedTime(3_600_000L))
-        assertEquals("9:59:59", formatElapsedTime(35_999_999L))
-        assertEquals("10:00:00", formatElapsedTime(36_000_000L))
-        assertEquals("100:00:00", formatElapsedTime(360_000_000L))
-        assertEquals("00:00", formatElapsedTime(-1L))
-        assertEquals("2562047788015:12:55", formatElapsedTime(Long.MAX_VALUE))
+    fun formatsTenthsAndTimeBoundaries() {
+        assertEquals("00:00.0", formatElapsedTime(0L))
+        assertEquals("00:00.0", formatElapsedTime(99L))
+        assertEquals("00:00.1", formatElapsedTime(100L))
+        assertEquals("00:00.9", formatElapsedTime(999L))
+        assertEquals("00:59.9", formatElapsedTime(59_999L))
+        assertEquals("01:00.0", formatElapsedTime(60_000L))
+        assertEquals("59:59.9", formatElapsedTime(3_599_999L))
+        assertEquals("1:00:00.0", formatElapsedTime(3_600_000L))
+        assertEquals("9:59:59.9", formatElapsedTime(35_999_999L))
+        assertEquals("10:00:00.0", formatElapsedTime(36_000_000L))
+        assertEquals("100:00:00.0", formatElapsedTime(360_000_000L))
+        assertEquals("00:00.0", formatElapsedTime(-1L))
+        assertEquals("2562047788015:12:55.8", formatElapsedTime(Long.MAX_VALUE))
     }
 
     private fun clock(

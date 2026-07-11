@@ -69,12 +69,11 @@ class StopwatchScreen(sealedActivity: SealedLightActivity) :
         }
     }
 
-    private fun elapsedTimeVariant(elapsedText: String): LightTextVariant =
-        if (elapsedText.count { it == ':' } == 1) {
-            LightTextVariant.Title
-        } else {
-            LightTextVariant.Subtitle
-        }
+    private fun elapsedTimeVariant(elapsedText: String): LightTextVariant = when {
+        elapsedText.count { it == ':' } == 1 -> LightTextVariant.Title
+        elapsedText.length <= 12 -> LightTextVariant.Subtitle
+        else -> LightTextVariant.Heading
+    }
 
     private fun bottomBarItems(uiState: StopwatchUiState): List<LightBarButton?> {
         if (!uiState.isReady) return emptyList()
