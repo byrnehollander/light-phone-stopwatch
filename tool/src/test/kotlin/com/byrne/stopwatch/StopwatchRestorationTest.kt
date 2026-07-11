@@ -77,6 +77,38 @@ class StopwatchRestorationTest {
     }
 
     @Test
+    fun nearEpochWallClockStillUsesMonotonicClockOnSameBoot() {
+        val restoration = restoreStopwatch(
+            snapshot(
+                state = STOPWATCH_STATE_RUNNING,
+                accumulatedMs = 2_000L,
+                anchorElapsedRealtimeMs = 10_000L,
+                anchorWallClockMs = 1_000L,
+            ),
+            clock(elapsedRealtimeMs = 15_000L, wallClockMs = 6_000L),
+        )
+
+        assertEquals(7_000L, restoration.state.elapsedMs(15_000L))
+        assertFalse(restoration.shouldPersist)
+    }
+
+    @Test
+    fun wallClockBecomingEstablishedStillUsesMonotonicClockWhenUptimeIncreases() {
+        val restoration = restoreStopwatch(
+            snapshot(
+                state = STOPWATCH_STATE_RUNNING,
+                accumulatedMs = 2_000L,
+                anchorElapsedRealtimeMs = 10_000L,
+                anchorWallClockMs = 1_000L,
+            ),
+            clock(elapsedRealtimeMs = 15_000L, wallClockMs = 1_000_015_000L),
+        )
+
+        assertEquals(7_000L, restoration.state.elapsedMs(15_000L))
+        assertFalse(restoration.shouldPersist)
+    }
+
+    @Test
     fun rebootWithLowerUptimeFallsBackToWallClockAndReanchors() {
         val now = clock(elapsedRealtimeMs = 500L, wallClockMs = 1_000_020_000L)
         val restoration = restoreStopwatch(
@@ -133,6 +165,22 @@ class StopwatchRestorationTest {
     }
 
     @Test
+    fun rebootWithoutUsableWallClockPausesAtBankedTime() {
+        val restoration = restoreStopwatch(
+            snapshot(
+                state = STOPWATCH_STATE_RUNNING,
+                accumulatedMs = 2_000L,
+                anchorElapsedRealtimeMs = 10_000L,
+                anchorWallClockMs = 1_000L,
+            ),
+            clock(elapsedRealtimeMs = 500L, wallClockMs = 400L),
+        )
+
+        assertEquals(StopwatchState.Paused(2_000L), restoration.state)
+        assertTrue(restoration.shouldPersist)
+    }
+
+    @Test
     fun invalidRunningClocksRestoreIdle() {
         val snapshotsAndClocks = listOf(
             snapshot(
@@ -141,8 +189,7 @@ class StopwatchRestorationTest {
             ) to clock(),
             snapshot(
                 state = STOPWATCH_STATE_RUNNING,
-                anchorElapsedRealtimeMs = 2_000L,
-                anchorWallClockMs = 1_000L,
+                anchorWallClockMs = -1L,
             ) to clock(elapsedRealtimeMs = 3_000L, wallClockMs = 10_000L),
             snapshot(
                 state = STOPWATCH_STATE_RUNNING,
@@ -153,7 +200,7 @@ class StopwatchRestorationTest {
                 state = STOPWATCH_STATE_RUNNING,
                 anchorElapsedRealtimeMs = 1_000L,
                 anchorWallClockMs = 10_000L,
-            ) to clock(elapsedRealtimeMs = 3_000L, wallClockMs = 2_000L),
+            ) to clock(elapsedRealtimeMs = 3_000L, wallClockMs = -1L),
         )
 
         snapshotsAndClocks.forEach { (snapshot, now) ->

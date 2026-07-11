@@ -153,17 +153,23 @@ private fun restoreRunningStopwatch(
 ): StopwatchRestoration {
     if (
         snapshot.anchorElapsedRealtimeMs < 0L ||
-        snapshot.anchorWallClockMs < snapshot.anchorElapsedRealtimeMs ||
+        snapshot.anchorWallClockMs < 0L ||
         now.elapsedRealtimeMs < 0L ||
-        now.wallClockMs < now.elapsedRealtimeMs
+        now.wallClockMs < 0L
     ) {
         return StopwatchRestoration(StopwatchState.Idle)
     }
 
     val oldBootEpoch = snapshot.anchorWallClockMs - snapshot.anchorElapsedRealtimeMs
     val currentBootEpoch = now.wallClockMs - now.elapsedRealtimeMs
+    val oldWallClockCanRepresentBoot = snapshot.anchorWallClockMs >=
+        snapshot.anchorElapsedRealtimeMs
+    val currentWallClockCanRepresentBoot = now.wallClockMs >= now.elapsedRealtimeMs
+    val wallClockValidityChanged = oldWallClockCanRepresentBoot !=
+        currentWallClockCanRepresentBoot
     val sameBoot = now.elapsedRealtimeMs >= snapshot.anchorElapsedRealtimeMs &&
-        valuesAreWithin(oldBootEpoch, currentBootEpoch, BOOT_EPOCH_TOLERANCE_MS)
+        (wallClockValidityChanged ||
+            valuesAreWithin(oldBootEpoch, currentBootEpoch, BOOT_EPOCH_TOLERANCE_MS))
 
     if (sameBoot) {
         return StopwatchRestoration(
@@ -172,6 +178,13 @@ private fun restoreRunningStopwatch(
                 anchorWallClockMs = snapshot.anchorWallClockMs,
                 accumulatedMs = snapshot.accumulatedMs,
             ),
+        )
+    }
+
+    if (!oldWallClockCanRepresentBoot || !currentWallClockCanRepresentBoot) {
+        return StopwatchRestoration(
+            state = StopwatchState.Paused(snapshot.accumulatedMs),
+            shouldPersist = true,
         )
     }
 

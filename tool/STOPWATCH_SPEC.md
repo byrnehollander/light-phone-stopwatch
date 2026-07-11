@@ -233,8 +233,9 @@ One atomic `dataStore.edit` writes the full snapshot, using namespaced keys:
 
 ### When writes happen
 
-A snapshot is written on each valid one of the four actions -- and at no other
-time.
+A snapshot is written on each valid one of the four actions and once when
+recovery must re-anchor or safely pause a running session. It is never written
+for a display tick.
 While running, every field is constant (the display changes; the state does
 not), so a running stopwatch costs zero writes and needs no periodic worker.
 The UI updates immediately, then the write runs in the same serialized
@@ -260,13 +261,24 @@ Read the snapshot once before presenting interactive state, then:
 Reboot detection: treat the anchor as invalid when `nowER < anchorEr`, or when
 the boot epoch (`wall - elapsedRealtime`) has shifted by more than 60 seconds
 since the snapshot was written. The second check catches reboots where the new
-uptime already exceeds the old anchor.
+uptime already exceeds the old anchor. A near-epoch wall clock may be lower
+than elapsed realtime; that does not invalidate same-boot monotonic timing. If
+the wall clock changes between near-epoch and established while uptime
+increases, prefer the monotonic same-boot interpretation. If a reboot is
+otherwise detected while either wall clock cannot represent a non-negative
+boot epoch, pause at the last banked value because wall-clock recovery is not
+trustworthy.
 
 Honest limits, stated rather than promised away:
 
 - A manual clock change larger than 60 seconds while the process is dead is
   indistinguishable from a reboot and makes recovery approximate by the size
   of the change. The display must still never be negative or decrease.
+- With a near-epoch wall clock, a reboot whose new uptime already exceeds the
+  old anchor can be indistinguishable from same-boot process death. The tool
+  prioritizes exact same-boot timing; cross-reboot recovery in that case may
+  undercount. A definitively detected reboot without a usable wall clock pauses
+  at the last banked value.
 - Millisecond precision is exact within a boot and approximate (wall-clock
   granularity) across one.
 
