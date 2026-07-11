@@ -3,6 +3,7 @@ package com.byrne.stopwatch
 import android.os.SystemClock
 
 private const val BOOT_EPOCH_TOLERANCE_MS = 60_000L
+private const val DISPLAY_INTERVAL_MS = 100L
 
 internal sealed interface StopwatchState {
     data object Idle : StopwatchState
@@ -95,7 +96,7 @@ internal fun formatElapsedTime(elapsedMs: Long): String {
     val nonNegativeElapsedMs = elapsedMs.coerceAtLeast(0L)
     val totalSeconds = nonNegativeElapsedMs / 1_000L
     val seconds = totalSeconds % 60L
-    val tenths = (nonNegativeElapsedMs / 100L) % 10L
+    val tenths = (nonNegativeElapsedMs / DISPLAY_INTERVAL_MS) % 10L
     val totalMinutes = totalSeconds / 60L
     val minutes = totalMinutes % 60L
     val hours = totalMinutes / 60L
@@ -105,6 +106,11 @@ internal fun formatElapsedTime(elapsedMs: Long): String {
     } else {
         "$hours:${minutes.twoDigits()}:${seconds.twoDigits()}.$tenths"
     }
+}
+
+internal fun delayUntilNextDisplayUpdate(elapsedMs: Long): Long {
+    val elapsedWithinInterval = elapsedMs.coerceAtLeast(0L) % DISPLAY_INTERVAL_MS
+    return DISPLAY_INTERVAL_MS - elapsedWithinInterval
 }
 
 internal fun StopwatchState.toSnapshot(): StopwatchSnapshot = when (this) {

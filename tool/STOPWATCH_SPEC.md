@@ -380,6 +380,8 @@ switch `serverPackage` to `com.thelightphone.sdk.emulator`.
   actions.
 - Unit-test the formatter around tenth, minute, and hour boundaries, including
   negative input, `Long.MAX_VALUE`, and a 100+ hour value.
+- Unit-test the delay to the next tenth boundary at exact, adjacent, negative,
+  and saturating elapsed values.
 - Unit-test pause/resume accumulation and tick-independence with a fake
   `TimeSource`.
 - Unit-test restoration against fabricated snapshots: each state, missing

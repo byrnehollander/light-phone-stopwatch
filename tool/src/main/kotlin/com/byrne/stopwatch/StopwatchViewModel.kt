@@ -18,7 +18,6 @@ import kotlinx.coroutines.sync.withLock
 import kotlin.coroutines.cancellation.CancellationException
 
 private const val TAG = "StopwatchViewModel"
-private const val DISPLAY_INTERVAL_MS = 100L
 
 internal data class StopwatchUiState(
     val isReady: Boolean = false,
@@ -115,8 +114,7 @@ class StopwatchViewModel internal constructor(
                 refreshUi()
                 val current = state ?: break
                 val elapsedMs = current.elapsedMs(timeSource.read().elapsedRealtimeMs)
-                val delayMs = DISPLAY_INTERVAL_MS - (elapsedMs % DISPLAY_INTERVAL_MS)
-                delay(delayMs)
+                delay(delayUntilNextDisplayUpdate(elapsedMs))
             }
         }
     }

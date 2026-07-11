@@ -147,6 +147,16 @@ class StopwatchModelTest {
         assertEquals("2562047788015:12:55.8", formatElapsedTime(Long.MAX_VALUE))
     }
 
+    @Test
+    fun displayDelayAlignsToNextTenthBoundary() {
+        assertEquals(100L, delayUntilNextDisplayUpdate(-1L))
+        assertEquals(100L, delayUntilNextDisplayUpdate(0L))
+        assertEquals(1L, delayUntilNextDisplayUpdate(99L))
+        assertEquals(100L, delayUntilNextDisplayUpdate(100L))
+        assertEquals(99L, delayUntilNextDisplayUpdate(101L))
+        assertEquals(93L, delayUntilNextDisplayUpdate(Long.MAX_VALUE))
+    }
+
     private fun clock(
         elapsedRealtimeMs: Long = 0L,
         wallClockMs: Long = 0L,
