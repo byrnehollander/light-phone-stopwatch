@@ -4,7 +4,7 @@ import android.os.SystemClock
 
 private const val BOOT_EPOCH_TOLERANCE_MS = 60_000L
 
-sealed interface StopwatchState {
+internal sealed interface StopwatchState {
     data object Idle : StopwatchState
 
     data class Running(
@@ -16,30 +16,30 @@ sealed interface StopwatchState {
     data class Paused(val accumulatedMs: Long) : StopwatchState
 }
 
-enum class StopwatchAction {
+internal enum class StopwatchAction {
     Start,
     Pause,
     Resume,
     Reset,
 }
 
-data class ClockReading(
+internal data class ClockReading(
     val elapsedRealtimeMs: Long,
     val wallClockMs: Long,
 )
 
-interface StopwatchTimeSource {
+internal interface StopwatchTimeSource {
     fun read(): ClockReading
 }
 
-object SystemStopwatchTimeSource : StopwatchTimeSource {
+internal object SystemStopwatchTimeSource : StopwatchTimeSource {
     override fun read() = ClockReading(
         elapsedRealtimeMs = SystemClock.elapsedRealtime(),
         wallClockMs = System.currentTimeMillis(),
     )
 }
 
-data class StopwatchSnapshot(
+internal data class StopwatchSnapshot(
     val schema: Int,
     val state: String,
     val accumulatedMs: Long,
@@ -47,12 +47,12 @@ data class StopwatchSnapshot(
     val anchorWallClockMs: Long,
 )
 
-data class StopwatchRestoration(
+internal data class StopwatchRestoration(
     val state: StopwatchState,
     val shouldPersist: Boolean = false,
 )
 
-fun reduceStopwatch(
+internal fun reduceStopwatch(
     state: StopwatchState,
     action: StopwatchAction,
     now: ClockReading,
@@ -82,7 +82,7 @@ fun reduceStopwatch(
     }
 }
 
-fun StopwatchState.elapsedMs(nowElapsedRealtimeMs: Long): Long = when (this) {
+internal fun StopwatchState.elapsedMs(nowElapsedRealtimeMs: Long): Long = when (this) {
     StopwatchState.Idle -> 0L
     is StopwatchState.Paused -> accumulatedMs.coerceAtLeast(0L)
     is StopwatchState.Running -> {
@@ -91,7 +91,7 @@ fun StopwatchState.elapsedMs(nowElapsedRealtimeMs: Long): Long = when (this) {
     }
 }
 
-fun formatElapsedTime(elapsedMs: Long): String {
+internal fun formatElapsedTime(elapsedMs: Long): String {
     val totalSeconds = elapsedMs.coerceAtLeast(0L) / 1_000L
     val seconds = totalSeconds % 60L
     val totalMinutes = totalSeconds / 60L
@@ -105,7 +105,7 @@ fun formatElapsedTime(elapsedMs: Long): String {
     }
 }
 
-fun StopwatchState.toSnapshot(): StopwatchSnapshot = when (this) {
+internal fun StopwatchState.toSnapshot(): StopwatchSnapshot = when (this) {
     StopwatchState.Idle -> StopwatchSnapshot(
         schema = STOPWATCH_SCHEMA,
         state = STOPWATCH_STATE_IDLE,
@@ -129,7 +129,7 @@ fun StopwatchState.toSnapshot(): StopwatchSnapshot = when (this) {
     )
 }
 
-fun restoreStopwatch(
+internal fun restoreStopwatch(
     snapshot: StopwatchSnapshot?,
     now: ClockReading,
 ): StopwatchRestoration {
@@ -151,7 +151,12 @@ private fun restoreRunningStopwatch(
     snapshot: StopwatchSnapshot,
     now: ClockReading,
 ): StopwatchRestoration {
-    if (snapshot.anchorElapsedRealtimeMs < 0L || snapshot.anchorWallClockMs < 0L) {
+    if (
+        snapshot.anchorElapsedRealtimeMs < 0L ||
+        snapshot.anchorWallClockMs < snapshot.anchorElapsedRealtimeMs ||
+        now.elapsedRealtimeMs < 0L ||
+        now.wallClockMs < now.elapsedRealtimeMs
+    ) {
         return StopwatchRestoration(StopwatchState.Idle)
     }
 
@@ -199,12 +204,6 @@ private fun saturatingAdd(left: Long, right: Long): Long =
     if (right > Long.MAX_VALUE - left) Long.MAX_VALUE else left + right
 
 private fun valuesAreWithin(left: Long, right: Long, tolerance: Long): Boolean {
-    if (left < 0L && right >= 0L) {
-        return left >= -tolerance && right <= left + tolerance
-    }
-    if (right < 0L && left >= 0L) {
-        return right >= -tolerance && left <= right + tolerance
-    }
     return if (left >= right) {
         left - right <= tolerance
     } else {

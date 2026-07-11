@@ -80,6 +80,14 @@ class StopwatchModelTest {
             StopwatchState.Idle,
             reduceStopwatch(StopwatchState.Idle, StopwatchAction.Pause, now),
         )
+        assertSame(
+            StopwatchState.Idle,
+            reduceStopwatch(StopwatchState.Idle, StopwatchAction.Resume, now),
+        )
+        assertSame(
+            StopwatchState.Idle,
+            reduceStopwatch(StopwatchState.Idle, StopwatchAction.Reset, now),
+        )
         assertSame(running, reduceStopwatch(running, StopwatchAction.Start, now))
         assertSame(running, reduceStopwatch(running, StopwatchAction.Resume, now))
         assertSame(paused, reduceStopwatch(paused, StopwatchAction.Pause, now))
@@ -112,6 +120,17 @@ class StopwatchModelTest {
     }
 
     @Test
+    fun elapsedTimeSaturatesInsteadOfOverflowing() {
+        val running = StopwatchState.Running(
+            anchorElapsedRealtimeMs = 0L,
+            anchorWallClockMs = 0L,
+            accumulatedMs = Long.MAX_VALUE - 5L,
+        )
+
+        assertEquals(Long.MAX_VALUE, running.elapsedMs(10L))
+    }
+
+    @Test
     fun formatsMinuteAndHourBoundaries() {
         assertEquals("00:00", formatElapsedTime(0L))
         assertEquals("00:59", formatElapsedTime(59_999L))
@@ -121,6 +140,8 @@ class StopwatchModelTest {
         assertEquals("9:59:59", formatElapsedTime(35_999_999L))
         assertEquals("10:00:00", formatElapsedTime(36_000_000L))
         assertEquals("100:00:00", formatElapsedTime(360_000_000L))
+        assertEquals("00:00", formatElapsedTime(-1L))
+        assertEquals("2562047788015:12:55", formatElapsedTime(Long.MAX_VALUE))
     }
 
     private fun clock(

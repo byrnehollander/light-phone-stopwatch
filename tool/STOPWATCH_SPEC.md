@@ -1,6 +1,6 @@
 # Stopwatch Tool Specification
 
-Status: Draft v2 (reviewed against the SDK in this repository)
+Status: v1 implementation (reviewed against the SDK in this repository)
 
 ## Summary
 
@@ -213,9 +213,11 @@ where `nowER` is `android.os.SystemClock.elapsedRealtime()`.
 ## Persistence and Restoration
 
 `LightActivity` rebuilds the tool from its `@InitialScreen` on every activity
-creation and offers no saved-instance-state hook, so navigation away, activity
-recreation, and process death are one and the same restoration path: the
-tool's shared Preferences `DataStore` (`lightContext.dataStore`).
+creation and offers no saved-instance-state hook, so activity recreation and
+process death use the same restoration path: the tool's shared Preferences
+`DataStore` (`lightContext.dataStore`). Navigation away leaves the screen's
+view model alive, while the same persisted snapshot protects against later
+process death.
 
 ### Snapshot
 
@@ -231,13 +233,16 @@ One atomic `dataStore.edit` writes the full snapshot, using namespaced keys:
 
 ### When writes happen
 
-A snapshot is written on each of the four actions -- and at no other time.
+A snapshot is written on each valid one of the four actions -- and at no other
+time.
 While running, every field is constant (the display changes; the state does
 not), so a running stopwatch costs zero writes and needs no periodic worker.
-Writes are best-effort fire-and-forget from the view-model scope; a write
-lost to an instant process kill loses only that one action.
+The UI updates immediately, then the write runs in the same serialized
+view-model coroutine. Storage failures are logged and leave the in-memory
+stopwatch usable; a write lost to a storage failure or instant process kill
+loses only that one action. Coroutine cancellation is never swallowed.
 
-### Restoration rules (on screen show)
+### Restoration rules (on view-model initialization)
 
 Read the snapshot once before presenting interactive state, then:
 
@@ -313,6 +318,8 @@ Small, deterministic, and test-first; roughly four files plus tests:
 
 No entry point, no `LightWork`, no `callRemoteServiceMethod`, no permissions in
 `lighttool.toml`, and no dependencies beyond what the scaffold already allows.
+Production metadata targets `com.lightos`. Local emulator runs temporarily
+switch `serverPackage` to `com.thelightphone.sdk.emulator`.
 
 ## Battery
 
@@ -344,8 +351,8 @@ No entry point, no `LightWork`, no `callRemoteServiceMethod`, no permissions in
     with a fake clock: the value derives from `elapsed(now)` only).
 11. Digit changes and state changes cause no layout shift; the one-hour
     transition re-centers symmetrically without moving the bars.
-12. The longest supported string fits at the LP3 reference size (1080 x 1240)
-    in both light and dark themes.
+12. Representative hour-bearing strings through at least `100:00:00` fit at
+    the LP3 reference size (1080 x 1240) in both light and dark themes.
 13. The tool declares no `lighttool.toml` permissions, performs no network or
     background work, and adds no dependencies beyond the existing allow-list.
     SDK-transitive manifest entries are not treated as stopwatch capabilities.
@@ -363,6 +370,8 @@ No entry point, no `LightWork`, no `callRemoteServiceMethod`, no permissions in
 - Unit-test restoration against fabricated snapshots: each state, missing
   keys, wrong schema, same-boot process death, `nowER < anchorEr` reboot,
   boot-epoch-shift reboot, and backward wall clock (`wallDelta < 0`).
+- Round-trip every state through a real Preferences DataStore and verify an
+  empty store restores as missing state.
 - On the LightOS emulator: display sleep, home navigation, process kill
   (`adb shell am kill`), and reboot while running; verify each restoration
   rule and confirm no ticking while backgrounded.

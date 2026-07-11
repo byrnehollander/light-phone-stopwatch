@@ -1,5 +1,6 @@
 package com.byrne.stopwatch
 
+import android.util.Log
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.lifecycle.viewModelScope
@@ -14,21 +15,24 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlin.coroutines.cancellation.CancellationException
 
-data class StopwatchUiState(
+private const val TAG = "StopwatchViewModel"
+
+internal data class StopwatchUiState(
     val isReady: Boolean = false,
     val stopwatchState: StopwatchState = StopwatchState.Idle,
     val elapsedText: String = "00:00",
 )
 
-class StopwatchViewModel(
+class StopwatchViewModel internal constructor(
     dataStore: DataStore<Preferences>,
     private val timeSource: StopwatchTimeSource = SystemStopwatchTimeSource,
 ) : LightViewModel<Unit>() {
     private val store = StopwatchStore(dataStore)
     private val actionMutex = Mutex()
     private val _uiState = MutableStateFlow(StopwatchUiState())
-    val uiState: StateFlow<StopwatchUiState> = _uiState.asStateFlow()
+    internal val uiState: StateFlow<StopwatchUiState> = _uiState.asStateFlow()
 
     private var state: StopwatchState? = null
     private var tickerJob: Job? = null
@@ -37,11 +41,11 @@ class StopwatchViewModel(
     init {
         viewModelScope.launch {
             actionMutex.withLock {
-                val snapshot = runCatching { store.load() }.getOrNull()
+                val snapshot = storageOrNull("load") { store.load() }
                 val restoration = restoreStopwatch(snapshot, timeSource.read())
                 state = restoration.state
                 if (restoration.shouldPersist) {
-                    runCatching { store.save(restoration.state) }
+                    storageOrNull("save recovered") { store.save(restoration.state) }
                 }
                 refreshUi()
                 restartTicker()
@@ -49,13 +53,13 @@ class StopwatchViewModel(
         }
     }
 
-    fun start() = dispatch(StopwatchAction.Start)
+    internal fun start() = dispatch(StopwatchAction.Start)
 
-    fun pause() = dispatch(StopwatchAction.Pause)
+    internal fun pause() = dispatch(StopwatchAction.Pause)
 
-    fun resume() = dispatch(StopwatchAction.Resume)
+    internal fun resume() = dispatch(StopwatchAction.Resume)
 
-    fun reset() = dispatch(StopwatchAction.Reset)
+    internal fun reset() = dispatch(StopwatchAction.Reset)
 
     override fun onScreenShow(screen: SimpleLightScreen<Unit>) {
         super.onScreenShow(screen)
@@ -86,7 +90,7 @@ class StopwatchViewModel(
                 state = next
                 refreshUi()
                 restartTicker()
-                runCatching { store.save(next) }
+                storageOrNull("save") { store.save(next) }
             }
         }
     }
@@ -119,5 +123,17 @@ class StopwatchViewModel(
     private fun stopTicker() {
         tickerJob?.cancel()
         tickerJob = null
+    }
+
+    private suspend fun <T> storageOrNull(
+        operation: String,
+        block: suspend () -> T,
+    ): T? = try {
+        block()
+    } catch (exception: CancellationException) {
+        throw exception
+    } catch (exception: Exception) {
+        Log.e(TAG, "Could not $operation stopwatch state", exception)
+        null
     }
 }

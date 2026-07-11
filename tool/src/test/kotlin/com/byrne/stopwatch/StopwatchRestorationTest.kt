@@ -133,16 +133,32 @@ class StopwatchRestorationTest {
     }
 
     @Test
-    fun invalidRunningAnchorRestoresIdle() {
-        val restoration = restoreStopwatch(
+    fun invalidRunningClocksRestoreIdle() {
+        val snapshotsAndClocks = listOf(
             snapshot(
                 state = STOPWATCH_STATE_RUNNING,
                 anchorElapsedRealtimeMs = -1L,
-            ),
-            clock(),
+            ) to clock(),
+            snapshot(
+                state = STOPWATCH_STATE_RUNNING,
+                anchorElapsedRealtimeMs = 2_000L,
+                anchorWallClockMs = 1_000L,
+            ) to clock(elapsedRealtimeMs = 3_000L, wallClockMs = 10_000L),
+            snapshot(
+                state = STOPWATCH_STATE_RUNNING,
+                anchorElapsedRealtimeMs = 1_000L,
+                anchorWallClockMs = 10_000L,
+            ) to clock(elapsedRealtimeMs = -1L, wallClockMs = 10_000L),
+            snapshot(
+                state = STOPWATCH_STATE_RUNNING,
+                anchorElapsedRealtimeMs = 1_000L,
+                anchorWallClockMs = 10_000L,
+            ) to clock(elapsedRealtimeMs = 3_000L, wallClockMs = 2_000L),
         )
 
-        assertEquals(StopwatchState.Idle, restoration.state)
+        snapshotsAndClocks.forEach { (snapshot, now) ->
+            assertEquals(StopwatchState.Idle, restoreStopwatch(snapshot, now).state)
+        }
     }
 
     private fun snapshot(

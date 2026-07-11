@@ -9,37 +9,37 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import kotlinx.coroutines.flow.first
 
 private object StopwatchPreferenceKeys {
-    val Schema = intPreferencesKey("stopwatch.schema")
-    val State = stringPreferencesKey("stopwatch.state")
-    val AccumulatedMs = longPreferencesKey("stopwatch.accumulatedMs")
-    val AnchorElapsedRealtimeMs = longPreferencesKey("stopwatch.anchorEr")
-    val AnchorWallClockMs = longPreferencesKey("stopwatch.anchorWall")
+    val schema = intPreferencesKey("stopwatch.schema")
+    val state = stringPreferencesKey("stopwatch.state")
+    val accumulatedMs = longPreferencesKey("stopwatch.accumulatedMs")
+    val anchorElapsedRealtimeMs = longPreferencesKey("stopwatch.anchorEr")
+    val anchorWallClockMs = longPreferencesKey("stopwatch.anchorWall")
 }
 
-class StopwatchStore(
+internal class StopwatchStore(
     private val dataStore: DataStore<Preferences>,
 ) {
     suspend fun load(): StopwatchSnapshot? {
         val preferences = dataStore.data.first()
         return StopwatchSnapshot(
-            schema = preferences[StopwatchPreferenceKeys.Schema] ?: return null,
-            state = preferences[StopwatchPreferenceKeys.State] ?: return null,
-            accumulatedMs = preferences[StopwatchPreferenceKeys.AccumulatedMs] ?: return null,
+            schema = preferences[StopwatchPreferenceKeys.schema] ?: return null,
+            state = preferences[StopwatchPreferenceKeys.state] ?: return null,
+            accumulatedMs = preferences[StopwatchPreferenceKeys.accumulatedMs] ?: return null,
             anchorElapsedRealtimeMs =
-                preferences[StopwatchPreferenceKeys.AnchorElapsedRealtimeMs] ?: return null,
-            anchorWallClockMs = preferences[StopwatchPreferenceKeys.AnchorWallClockMs] ?: return null,
+                preferences[StopwatchPreferenceKeys.anchorElapsedRealtimeMs] ?: return null,
+            anchorWallClockMs = preferences[StopwatchPreferenceKeys.anchorWallClockMs] ?: return null,
         )
     }
 
     suspend fun save(state: StopwatchState) {
         val snapshot = state.toSnapshot()
         dataStore.edit { preferences ->
-            preferences[StopwatchPreferenceKeys.Schema] = snapshot.schema
-            preferences[StopwatchPreferenceKeys.State] = snapshot.state
-            preferences[StopwatchPreferenceKeys.AccumulatedMs] = snapshot.accumulatedMs
-            preferences[StopwatchPreferenceKeys.AnchorElapsedRealtimeMs] =
+            preferences[StopwatchPreferenceKeys.schema] = snapshot.schema
+            preferences[StopwatchPreferenceKeys.state] = snapshot.state
+            preferences[StopwatchPreferenceKeys.accumulatedMs] = snapshot.accumulatedMs
+            preferences[StopwatchPreferenceKeys.anchorElapsedRealtimeMs] =
                 snapshot.anchorElapsedRealtimeMs
-            preferences[StopwatchPreferenceKeys.AnchorWallClockMs] = snapshot.anchorWallClockMs
+            preferences[StopwatchPreferenceKeys.anchorWallClockMs] = snapshot.anchorWallClockMs
         }
     }
 }
