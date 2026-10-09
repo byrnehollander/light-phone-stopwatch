@@ -14,15 +14,14 @@ Pause, Resume, and Reset. There are no laps, history, settings, or sounds.
 
 ## Product Goal
 
-Let a user begin timing with one tap, glance at an unambiguous elapsed time,
-leave the tool (or let the display sleep) without losing the measurement, and
-return to pause or reset it.
+Start timing with one tap, read the elapsed time at a glance, leave the tool
+(or let the screen sleep) without losing time, and come back to pause or reset.
 
 User story: As a Light Phone user, I want to start at zero and measure how long
 something takes so I do not have to work backward from a timer.
 
-Success means the tool feels like it shipped with LightOS: quiet, immediate,
-typographic, and free of configuration.
+It should feel like a built-in LightOS tool: no settings and nothing on screen
+but the time and its buttons.
 
 ## Design Principles
 
@@ -90,10 +89,10 @@ Three states, four actions:
   `PAUSE` the center is empty, so a stray second tap does nothing.
 - Reset needs no confirmation; requiring pause first is the guard, consistent
   with GNOME Clocks and Google Clock.
-- An action received in a state that does not offer it is ignored (this makes
-  rapid double-taps harmless by construction).
-- Leaving the tool never implies pause. Reopening shows the state as if the
-  tool had stayed visible.
+- An action received in a state that does not offer it is ignored, so fast
+  double-taps do nothing extra.
+- Leaving the tool doesn't pause it. Reopening shows the same state as if the
+  tool had stayed open.
 
 ## Time Display
 
@@ -107,12 +106,11 @@ Three states, four actions:
 - The display updates ten times per second, aligned to elapsed-time tenth
   boundaries (sleep `100 - (elapsedMs % 100)` between updates), and immediately
   on every state change and screen show.
-- Rationale for tenths: one changing fractional digit makes short stopwatch
-  measurements feel responsive and useful without the visual churn or implied
-  precision of hundredths. A 10 Hz visible-only ticker is substantially calmer
-  and cheaper than a 30-100 Hz loop, while the measurement remains independent
-  of ticker cadence. Precision is fixed rather than configurable so opening the
-  tool remains immediate and settings-free.
+- Why tenths: one moving decimal digit is useful for short measurements.
+  Hundredths flicker too fast to read and suggest more precision than a tap
+  gives. Updating 10 times a second also costs less than 30-100. The
+  measurement itself doesn't depend on how often the display updates. Precision
+  is fixed so there's nothing to configure.
 - Render with a stable-width treatment so digits never shift layout:
   `LightText(monospace = true)` is the SDK-supported default. If the monospace
   family clashes aesthetically, derive one style from Light typography with
@@ -179,8 +177,8 @@ One screen, three fixed regions, no navigation:
 - Wrap content in `LightTheme(colors)` fed by
   `LightThemeController.colors.collectAsState()`, and fill the background with
   `LightThemeTokens.colors.background`, exactly as the example tools do. No
-  app-specific colors; running and paused are distinguished only by the action
-  labels and the motion of the time.
+  app-specific colors; you can tell running from paused only by the button
+  labels and whether the time is moving.
 - Bottom bar: Idle and Running pass a single `LightBarButton.Text` item
   (rendered centered); Paused passes two items (`RESET`, `RESUME`) for the
   left/right slots. Labels are uppercase.
@@ -266,8 +264,8 @@ Read the snapshot once before presenting interactive state, then:
 4. `running`, reboot detected: best-effort wall-clock recovery. Compute
    `wallDelta = nowWall - anchorWall`. If `wallDelta >= 0`, continue Running
    with `elapsed = accumulatedMs + wallDelta`, re-anchored to fresh clock
-   values and persisted. If `wallDelta < 0` (clock moved backward), give up
-   gracefully: Paused at `accumulatedMs`.
+   values and persisted. If `wallDelta < 0` (clock moved backward), pause at
+   `accumulatedMs`.
 
 Reboot detection: treat the anchor as invalid when `nowER < anchorEr`, or when
 the boot epoch (`wall - elapsedRealtime`) has shifted by more than 60 seconds
@@ -280,7 +278,7 @@ otherwise detected while either wall clock cannot represent a non-negative
 boot epoch, pause at the last banked value because wall-clock recovery is not
 trustworthy.
 
-Honest limits, stated rather than promised away:
+Known limits:
 
 - A manual clock change larger than 60 seconds while the process is dead is
   indistinguishable from a reboot and makes recovery approximate by the size
@@ -320,7 +318,7 @@ These practices must be applied through the SDK's public abstractions and
 allow-listed dependencies; ordinary Android APIs that bypass the Light sandbox
 remain prohibited.
 
-Small, deterministic, and test-first; roughly four files plus tests:
+About four files plus tests:
 
 - `StopwatchState` -- sealed: `Idle`, `Running(anchorEr, anchorWall,
   accumulatedMs)`, `Paused(accumulatedMs)`.
@@ -347,8 +345,8 @@ switch `serverPackage` to `com.thelightphone.sdk.emulator`.
 
 ## Battery
 
-- Zero timers, writes, or wake-ups while the screen is off or the tool is
-  hidden; the running state is a pair of numbers, not a process.
+- No timers, writes, or wake-ups while the screen is off or the tool is
+  hidden. A running stopwatch is just a few stored numbers.
 - Up to ten recompositions per second while visible and running; none while
   paused.
 - No wake locks and no keep-awake (a deliberate choice; see Scope).
@@ -364,8 +362,7 @@ switch `serverPackage` to `com.thelightphone.sdk.emulator`.
 6. No reset affordance exists while running; repeated rapid taps on any action
    never corrupt state or skip states.
 7. Letting the display sleep, navigating home, or killing the tool process
-   (same boot) and reopening shows the correct current elapsed time and state;
-   a stopwatch running across all of these reads as if it never stopped.
+   (same boot) and reopening shows the correct current elapsed time and state.
 8. Rebooting mid-run recovers the session per Restoration rule 4 and never
    shows a negative or decreasing time.
 9. Changing the time zone does not change the measurement. Changing the wall
@@ -426,9 +423,8 @@ None block version 1.
   https://support.apple.com/guide/iphone/use-the-stopwatch-iph96b1e460/ios
 - GNOME Clocks uses Start / Pause / Resume / Clear, with Clear available only
   while paused: https://help.gnome.org/gnome-clocks/stopwatch.html
-- LightOS Timer uses explicit text actions and seconds resolution, reinforcing
-  text-first, calm controls; the fixed tenths digit is a deliberate stopwatch
-  distinction rather than a change to that interaction model:
+- LightOS Timer uses text buttons and shows whole seconds. The stopwatch keeps
+  the text buttons and adds a tenths digit:
   https://support.thelightphone.com/hc/en-us/articles/24571548717716-Timer-Tool
 - `SystemClock` semantics (monotonic bases, sleep behavior):
   https://developer.android.com/reference/android/os/SystemClock
