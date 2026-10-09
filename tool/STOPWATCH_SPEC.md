@@ -52,7 +52,9 @@ typographic, and free of configuration.
 
 - Laps, splits, saved sessions, or multiple stopwatches
 - Hundredths or millisecond display
-- Sound, vibration, notifications, or alarms
+- Sound, vibration, notifications, or alarms (the tool triggers no vibration of
+  its own; the SDK's standard touch haptics on bar buttons still apply when the
+  user has haptics enabled)
 - Settings, labels, or configurable precision
 - Tool-declared permissions, network behavior, or background jobs (`LightWork`
   must not be used; its 15-minute minimum interval and deferred scheduling make
@@ -60,10 +62,15 @@ typographic, and free of configuration.
   dependencies currently contribute baseline entries to the merged Android
   manifest; the stopwatch neither requests them in `lighttool.toml` nor invokes
   the corresponding capabilities.
-- Keeping the display awake. The SDK exposes no window or power-manager access
-  to tools (`getSystemService` and activity access are blocked by the build
-  plugin), so this is infeasible today, not merely deferred. The display
-  sleeps on the normal system schedule; timing is unaffected.
+- Keeping the display awake. Compose's `Modifier.keepScreenOn()` would allow
+  this without a permission, but v1 deliberately lets the display sleep on the
+  normal system schedule: it saves battery and avoids inviting the user to
+  watch the screen. Timing is unaffected.
+- An orientation lock. With `orientation = "portrait"`, Android letterboxed the
+  tool on an LP3-sized (1080x1240) LightOS emulator, because the tool area is
+  wider than tall once system insets are removed. The tool therefore follows
+  the system orientation and relies on state restoration across activity
+  recreation.
 
 ## Interaction Model
 
@@ -184,7 +191,10 @@ One screen, three fixed regions, no navigation:
   variants come from the Light typography system; do not add custom font sizes,
   kerning, or letter spacing.
 - Use grid units (`gridUnitsAsDp`) for all spacing; do not hardcode dp.
-- Keep the bars' built-in touch targets; give buttons content descriptions.
+- Keep the bars' built-in touch targets. Text bar buttons are announced by
+  their visible labels; the SDK does not currently apply `contentDescription`
+  to `LightBarButton.Text`, but descriptions are still passed so they take
+  effect if it starts to.
 
 ## Timekeeping Model
 
@@ -341,7 +351,7 @@ switch `serverPackage` to `com.thelightphone.sdk.emulator`.
   hidden; the running state is a pair of numbers, not a process.
 - Up to ten recompositions per second while visible and running; none while
   paused.
-- No wake locks and no keep-awake (infeasible via the SDK; see Scope).
+- No wake locks and no keep-awake (a deliberate choice; see Scope).
 
 ## Acceptance Criteria
 
