@@ -1,3 +1,16 @@
+# Stopwatch for the Light Phone III
+
+A calm, single-purpose stopwatch tool for LightOS: start, pause, resume, reset. Elapsed time is shown to tenths of a second and keeps counting while the screen sleeps, while you're in another tool, and after the tool's process is killed.
+
+- **Private by construction:** no permissions requested in `lighttool.toml`, no network calls, no analytics. The only thing stored is the stopwatch's own state, on the device.
+- **Built with the Light SDK:** the tool lives in [`tool/`](./tool) (`com.byrne.stopwatch`). Everything else in this repo is the upstream [light-sdk](https://github.com/lightphone/light-sdk) it is forked from.
+- **Design and behaviour spec:** [`tool/STOPWATCH_SPEC.md`](./tool/STOPWATCH_SPEC.md)
+- **Tests:** `./gradlew :tool:testDebugUnitTest`
+
+The rest of this README is the upstream light-sdk documentation.
+
+---
+
 # light-sdk
 or: a tool for building Tools
 
