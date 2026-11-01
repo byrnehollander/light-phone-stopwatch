@@ -6,6 +6,10 @@ The tool's code is in [`tool/`](./tool). Everything else in this repo comes from
 
 Run the tests with `./gradlew :tool:testDebugUnitTest`.
 
+Stopwatch 1.0.0 has been tested on a Light Phone III running LightOS 582. See the
+[validation results](tool/STOPWATCH_SPEC.md#validation-results--november-1-2026)
+for coverage and remaining hardware checks.
+
 The rest of this README is Light's SDK documentation.
 
 ---

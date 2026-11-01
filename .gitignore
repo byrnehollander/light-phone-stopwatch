@@ -6,6 +6,9 @@ build/
 local.properties
 local/
 
+### Local workspace notes ###
+.context/
+
 ### IntelliJ IDEA ###
 .idea/
 *.iws
