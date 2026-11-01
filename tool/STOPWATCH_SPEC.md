@@ -381,6 +381,22 @@ switch `serverPackage` to `com.thelightphone.sdk.emulator`.
 14. While running with the screen off, no coroutines tick and no DataStore
     writes occur.
 
+## Validation Results — November 1, 2026
+
+Stopwatch 1.0.0 (`versionCode = 1`, Light SDK 0.2.0), built from commit
+`6a0f21218d64d2636999a0d4b0ef6849b2daea5d`, was tested on a Light Phone III
+(`TLP301`) running LightOS `582-release-lp3` and Android API 34.
+
+- `./gradlew :tool:assembleRelease :tool:testDebugUnitTest` succeeded; all 23 unit
+  tests passed with no failures, errors, or skips.
+- The release APK signature verified with `apksigner`, and USB installation
+  and launch succeeded.
+- Start, Pause, Resume, and Reset worked on the physical phone.
+
+This hardware check did not cover screen-off/background timing, process-death
+or reboot restoration, long-duration battery use, both themes, or hour-boundary
+layouts. Those checks remain part of the validation plan below.
+
 ## Validation Plan
 
 - Unit-test the reducer for every (state, action) pair, including ignored
