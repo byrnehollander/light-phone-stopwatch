@@ -359,4 +359,50 @@ class LightToolMetadataTest {
             assert(ex.message!!.contains("lowercase dotted")) { ex.message ?: "" }
         }
     }
+
+    // Stopwatch fork patch: tool.icon (tool/STOPWATCH_SPEC.md, App icon).
+    private fun iconToml(dir: Path, iconLine: String): File = writeToml(dir, """
+        [tool]
+        id = "com.example.mytool"
+        label = "X"
+        versionCode = 1
+        versionName = "1.0.0"
+        serverPackage = "com.lightos"
+        $iconLine
+    """.trimIndent())
+
+    @Test
+    fun `icon is optional`(@TempDir dir: Path) {
+        assertEquals(null, LightToolMetadata.parse(iconToml(dir, "")).icon)
+    }
+
+    @Test
+    fun `mipmap icon parses`(@TempDir dir: Path) {
+        val meta = LightToolMetadata.parse(iconToml(dir, "icon = \"@mipmap/ic_launcher\""))
+        assertEquals("@mipmap/ic_launcher", meta.icon)
+    }
+
+    @Test
+    fun `icon that is not a mipmap reference fails`(@TempDir dir: Path) {
+        for (bad in listOf(
+            "ic_launcher",
+            "@drawable/ic_launcher",
+            "@mipmap/IcLauncher",
+            "@mipmap/",
+            "@android:mipmap/sym_def_app_icon",
+            "@mipmap/ic_launcher\\\" android:debuggable=\\\"true",
+        )) {
+            val file = iconToml(dir, "icon = \"$bad\"")
+            val ex = assertThrows<LightToolMetadataException> { LightToolMetadata.parse(file) }
+            assert(ex.message!!.contains("tool.icon")) { ex.message ?: "" }
+        }
+    }
+
+    @Test
+    fun `icon of the wrong type fails with clear message`(@TempDir dir: Path) {
+        val ex = assertThrows<LightToolMetadataException> {
+            LightToolMetadata.parse(iconToml(dir, "icon = true"))
+        }
+        assertEquals("tool.icon must be a string", ex.message)
+    }
 }

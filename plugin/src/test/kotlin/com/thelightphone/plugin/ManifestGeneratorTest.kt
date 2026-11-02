@@ -12,6 +12,7 @@ class ManifestGeneratorTest {
         capabilities: List<String> = emptyList(),
         serverPackage: String = "com.lightos",
         orientation: String? = null,
+        icon: String? = null,
     ): String = ManifestGenerator.render(
         LightToolMetadata(
             toolId = "com.example.mytool",
@@ -22,8 +23,37 @@ class ManifestGeneratorTest {
             capabilities = capabilities,
             serverPackage = serverPackage,
             orientation = orientation,
+            icon = icon,
         )
     )
+
+    // Stopwatch fork patch: tool.icon (tool/STOPWATCH_SPEC.md, App icon).
+    @Test
+    fun `icon is omitted by default`() {
+        val xml = render()
+        assertFalse(xml.contains("android:icon"))
+        assertFalse(xml.contains("android:roundIcon"))
+    }
+
+    @Test
+    fun `icon is emitted on the application`() {
+        val xml = render(icon = "@mipmap/ic_launcher")
+        val application = xml.substringAfter("<application").substringBefore(">")
+        assertTrue(
+            application.contains("""android:icon="@mipmap/ic_launcher""""),
+            "expected android:icon on <application>; got:\n$xml"
+        )
+        // Only on the application: the activity inherits it.
+        assertTrue(xml.split("android:icon=").size - 1 == 1)
+    }
+
+    @Test
+    fun `without icon the manifest is unchanged`() {
+        // Upstream tools may rely on there being no icon, so absent means exactly upstream.
+        val base = render(permissions = listOf("android.permission.INTERNET"))
+        val withIcon = render(permissions = listOf("android.permission.INTERNET"), icon = "@mipmap/ic_launcher")
+        assertTrue(withIcon.replace("\n        android:icon=\"@mipmap/ic_launcher\"", "") == base)
+    }
 
     @Test
     fun `cleartext-http capability sets usesCleartextTraffic on the application`() {

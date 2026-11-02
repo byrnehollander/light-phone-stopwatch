@@ -5,7 +5,8 @@ package com.thelightphone.plugin
  *
  * The skeleton mirrors what every Light SDK tool needs (LightSdkApplication +
  * LightActivity + LightSdkReceiver + SDK-marker query). The only variation
- * across tools is the label and the set of `<uses-permission>` entries.
+ * across tools is the label and the set of `<uses-permission>` entries
+ * (plus, in Stopwatch's fork, an optional launcher icon).
  *
  * All user-controlled strings have already been validated, but we XML-escape
  * them anyway so a future loosening of the validators can't open a manifest
@@ -86,11 +87,17 @@ object ManifestGenerator {
                 """        android:usesCleartextTraffic="true"""",
             )
         )
+        // Stopwatch fork patch (Nov 1, 2026): android:icon only when lighttool.toml sets tool.icon.
+        // Without it the manifest is byte-for-byte upstream's. Keep this on any upstream merge
+        // (tool/STOPWATCH_SPEC.md, App icon). No roundIcon: an adaptive icon is masked to any shape.
+        val icon = marginBlock(
+            metadata.icon?.let { listOf("""        android:icon="${xmlAttr(it)}"""") }.orEmpty()
+        )
         appendLine(
             """
             |    <application
             |        android:name="com.thelightphone.sdk.LightSdkApplication"
-            |        android:label="${xmlAttr(metadata.label)}"
+            |        android:label="${xmlAttr(metadata.label)}"$icon
             |        android:supportsRtl="true"$cleartext
             |        android:theme="@style/LightSdk.Theme.Splash">
             |        <meta-data
