@@ -19,6 +19,7 @@ permissions  = ["android.permission.CAMERA"]   # allowlisted permissions only
 capabilities = []                              # allowlisted SDK features
 serverPackage = "com.lightos"                  # LightOS package your tool connects to
 orientation  = "portrait"                      # optional; omit for no orientation lock
+icon         = "@mipmap/ic_launcher"           # optional (fork patch); omit for no android:icon
 ```
 
 ## Fields
@@ -71,6 +72,9 @@ Must be `com.lightos`. The build fails on any other value unless you pass `-Dlig
 ### `orientation` — optional screen orientation lock
 Set to `"portrait"` to keep the tool in portrait orientation. Omit this field to
 let the system choose the orientation.
+
+### `icon` — optional launcher icon (fork patch)
+Not in Light's upstream SDK. This fork adds it so the app switcher shows the tool's own icon instead of Android's default. It must be a mipmap reference such as `"@mipmap/ic_launcher"`; anything else fails the build. When set, the generated manifest gets `android:icon` on `<application>`. When omitted, the manifest is exactly upstream's. **Keep this on any upstream merge** (`LightToolMetadata.kt`, `ManifestGenerator.kt` and their tests, marked "fork patch").
 
 ## Permission allowlist
 

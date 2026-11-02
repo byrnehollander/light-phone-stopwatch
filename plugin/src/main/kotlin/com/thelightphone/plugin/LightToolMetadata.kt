@@ -23,6 +23,10 @@ data class LightToolMetadata(
     val capabilities: List<String> = emptyList(),
     val serverPackage: String,
     val orientation: String? = null,
+    // Stopwatch fork patch (Nov 1, 2026), same as Bump's: optional launcher icon. Upstream has no
+    // icon field, and its tools may rely on the manifest carrying no android:icon, so null keeps
+    // upstream behavior. Keep this on any upstream merge (tool/STOPWATCH_SPEC.md, App icon).
+    val icon: String? = null,
 ) {
     companion object {
         const val FILE_NAME: String = "lighttool.toml"
@@ -62,6 +66,7 @@ data class LightToolMetadata(
                 capabilities = validateCapabilities(tool.tomlStringList("capabilities")),
                 serverPackage = validateServerPackage(tool.tomlString("serverPackage"), allowAltServerPackage),
                 orientation = validateOrientation(tool.tomlString("orientation")),
+                icon = validateIcon(tool.tomlString("icon")),
             )
         }
 
@@ -126,6 +131,16 @@ data class LightToolMetadata(
             return value
         }
 
+        // Stopwatch fork patch (see the icon field): a mipmap resource reference, nothing else.
+        private fun validateIcon(value: String?): String? {
+            if (value == null) return null
+            require(LightToolPolicy.ICON_PATTERN.matches(value)) {
+                "tool.icon must be a mipmap resource reference such as " +
+                    "\"@mipmap/ic_launcher\"; got '$value'"
+            }
+            return value
+        }
+
         private fun validatePermissions(values: List<String>?): List<String> {
             val list = values ?: emptyList()
             val seen = mutableSetOf<String>()
@@ -182,6 +197,8 @@ object LightToolPolicy {
     const val MAX_VERSION_CODE: Int = 2_100_000_000
     const val LIGHTOS_SERVER_PACKAGE: String = "com.lightos"
     val ALLOWED_ORIENTATIONS: Set<String> = setOf("portrait")
+    /** Stopwatch fork patch: `tool.icon` is a mipmap reference (lowercase resource name). */
+    val ICON_PATTERN: Regex = Regex("^@mipmap/[a-z][a-z0-9_]{0,63}$")
 
     val ALLOWED_PERMISSIONS: Set<String> = setOf(
         "android.permission.INTERNET",

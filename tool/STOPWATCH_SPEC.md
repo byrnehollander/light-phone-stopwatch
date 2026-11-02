@@ -381,6 +381,14 @@ switch `serverPackage` to `com.thelightphone.sdk.emulator`.
 14. While running with the screen off, no coroutines tick and no DataStore
     writes occur.
 
+## App icon
+
+*Added Nov 1, 2026 (1.0.1).* The icon is a circle with a short crown on top and one hand, white on black. It shows in the app switcher, where LightOS otherwise draws Android's default robot.
+
+- **Style.** The same family as Bump's icon: the LightOS icon stroke weight (5 on the 108 adaptive canvas, about 4 on LightIcons' 60), round caps and joins, and everything inside the 66 dp safe zone. No numerals or ticks, so it reads at switcher size.
+- **Files.** `tool/src/main/res/mipmap-anydpi/ic_launcher.xml` (adaptive: black background, the vector foreground, and the same vector as the `<monochrome>` layer) and `drawable/ic_launcher_foreground.xml`.
+- **Fork patch to the Light plugin.** Upstream's generated manifest has no `android:icon`, and a hand-written manifest is rejected. This fork adds an optional `icon` to `lighttool.toml` (`icon = "@mipmap/ic_launcher"`, validated as a mipmap reference). `ManifestGenerator` puts `android:icon` on `<application>` only when it is set. **Keep this on any SDK merge** (`LightToolMetadata.kt`, `ManifestGenerator.kt` and their tests, marked "fork patch").
+
 ## Validation Results — November 1, 2026
 
 Stopwatch 1.0.0 (`versionCode = 1`, Light SDK 0.2.0), built from commit
